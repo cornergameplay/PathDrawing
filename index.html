@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>皮克敏路線規劃與 S2 網格工具 (手機完美版)</title>
+    <title>皮克敏路線規劃與 S2 網格工具</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@latest/dist/leaflet-geoman.css" />
@@ -26,7 +26,7 @@
             padding: 10px 15px; display: flex;
             justify-content: space-between; align-items: center;
             box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index: 2000;
-            height: 55px;
+            height: 55px; flex-shrink: 0;
         }
         .header-left { display: flex; align-items: center; gap: 10px; }
         header h1 { margin: 0; font-size: 18px; white-space: nowrap; }
@@ -43,7 +43,7 @@
 
         /* 主體佈局 */
         .main-container {
-            display: flex; flex: 1; height: calc(100vh - 55px); position: relative;
+            display: flex; flex: 1; position: relative; height: calc(100vh - 55px);
         }
 
         /* 側邊控制欄 */
@@ -52,17 +52,14 @@
             background-color: #ffffff; box-shadow: 3px 0 10px rgba(0,0,0,0.1);
             z-index: 1500; display: flex; flex-direction: column;
             overflow-y: auto; overflow-x: hidden;
-            /* 底部保留 150px 確保手機按鈕不被遮擋 */
-            padding: 15px 20px 150px 20px; 
+            /* 底部保留 120px 確保手機按鈕不被遮擋 */
+            padding: 15px 20px 120px 20px; 
             -webkit-overflow-scrolling: touch;
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: absolute; left: 0; top: 0; bottom: 0;
             transform: translateX(0); /* 電腦版預設開啟 */
         }
         
-        /* 手動收合狀態 (供電腦版使用) */
-        #sidebar.collapsed { transform: translateX(-100%); }
-
         /* 側邊欄遮罩 */
         #sidebarOverlay {
             display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
@@ -149,18 +146,20 @@
                 transform: translateX(-100%); /* 手機預設隱藏側邊欄 */
             }
             #sidebar.open { transform: translateX(0); }
-            .header-left h1 { font-size: 16px; }
             
-            /* 手機版：將 FABs 改為底部水平排列 */
+            /* 手機版：將 FABs 改為底部置中、水平排列 */
             .map-fabs {
                 bottom: 25px; right: 50%; transform: translateX(50%);
                 flex-direction: row; gap: 20px;
             }
             .fab { width: 50px; height: 50px; font-size: 20px; }
             
-            /* 讓 Leaflet 預設的版權文字往上移 */
+            /* 避免浮水印擋住按鈕 */
             .leaflet-control-attribution { margin-bottom: 85px !important; }
         }
+
+        /* 手動收合狀態 (供電腦版使用) */
+        #sidebar.collapsed { transform: translateX(-100%); }
 
         /* 教學視窗 */
         .modal-overlay {
@@ -220,8 +219,8 @@
             
             <div class="section-title">👣 3. 路線規劃與最佳化</div>
             <div class="help-text">
-                * 點擊地圖畫線，實心點可拖曳。<br>
-                * 可點擊地圖上的懸浮按鈕快速操作。
+                * 點擊地圖畫線，實心點可拖曳調整。<br>
+                * 最佳化會自動幫您用最短距離串起所有點。
             </div>
             <button class="btn-optimize" onclick="generateOptimizedRoute()">✨ 產生最佳化路徑 (含手繪點)</button>
             <div style="display: flex; gap: 8px;">
@@ -239,9 +238,9 @@
 
         <div id="map">
             <div class="map-fabs" id="mapFabsContainer">
-                <button class="fab fab-opt" onclick="handleFabClick(event, generateOptimizedRoute)" title="最佳化路徑">✨</button>
-                <button class="fab fab-undo" onclick="handleFabClick(event, undoAction)" title="復原上一步">⏪</button>
-                <button class="fab fab-clear" onclick="handleFabClick(event, clearRouteOnly)" title="清除路線">❌</button>
+                <button class="fab fab-opt" id="btnFabOpt" title="最佳化路徑">✨</button>
+                <button class="fab fab-undo" id="btnFabUndo" title="復原上一步">⏪</button>
+                <button class="fab fab-clear" id="btnFabClear" title="取消最佳化/清除路線">❌</button>
             </div>
         </div>
     </div>
@@ -253,11 +252,11 @@
                 <button class="close-modal" onclick="closeModal()">×</button>
             </div>
             <ul class="tutorial-list">
-                <li><b>📱 選單開關：</b>點擊左上角「☰」可自由收合選單，方便手機全螢幕瀏覽！</li>
-                <li><b>🎯 種花範圍：</b>輸入座標後，地圖即會繪製半徑 50m 圓形。</li>
-                <li><b>✍️ 手動畫線：</b>點擊地圖畫線。拖曳實心點可移動，拉半透明方塊可新增折點。</li>
-                <li><b>✨ 最佳化路線：</b>點擊「✨」，系統會把<span class="highlight">基準點與手繪點位</span>合併，自動運算出一條不重疊、耗時最短的完美路徑！</li>
-                <li><b>⏪ 復原功能：</b>畫錯、刪除錯，點擊「⏪」即可退回上一步。</li>
+                <li><b>📱 選單開關：</b>點擊左上角「☰」可自由收合選單，手機操作不卡卡！</li>
+                <li><b>🎯 種花範圍：</b>在欄位 2 輸入座標，地圖即會繪製 50m 種花範圍。</li>
+                <li><b>✍️ 手動畫線：</b>點擊地圖即可畫線。拖曳實心點可移動，拉半透明方塊可新增折點。</li>
+                <li><b>✨ 最佳化路線：</b>點擊「✨」，系統會把<span class="highlight">基準點與手繪點位合併</span>，自動運算出一條不重疊、耗時最短的完美路徑！</li>
+                <li><b>⏪ 復原/取消：</b>畫錯、刪除錯，點擊「⏪」退回上一步；點擊「❌」可一鍵清除畫好的路線重新來過。</li>
             </ul>
             <button class="btn-draw" onclick="closeModal()">我瞭解了，開始使用！</button>
         </div>
@@ -269,7 +268,7 @@
 
     <script>
         // ==========================================
-        // UI 與選單控制邏輯 (徹底修復開關問題)
+        // 1. UI 與選單控制邏輯 (修復開關不靈敏)
         // ==========================================
         function openModal() { document.getElementById('helpModal').style.display = 'flex'; }
         function closeModal() { document.getElementById('helpModal').style.display = 'none'; }
@@ -285,25 +284,25 @@
             } else {
                 sidebar.classList.toggle('collapsed');
             }
-            // 等待動畫完成後重新計算地圖尺寸
-            setTimeout(() => { map.invalidateSize(); }, 300);
+            // 等待 CSS 動畫完成後重新計算地圖尺寸
+            setTimeout(() => { map.invalidateSize(); }, 350);
         }
 
-        // 監聽視窗大小變化，自動調整選單狀態
+        // 監聽視窗變化，防止切換裝置方向時破版
         window.addEventListener('resize', () => {
-            const isMobile = window.innerWidth <= 768;
-            if (!isMobile) {
+            if (window.innerWidth > 768) {
                 overlay.style.display = 'none';
                 sidebar.classList.remove('open');
             }
         });
 
         window.onload = function() { 
+            // 如果是手機版，預設選單會被 CSS 隱藏，不影響地圖
             openModal(); 
         };
 
         // ==========================================
-        // 地圖初始化
+        // 2. 地圖初始化
         // ==========================================
         const map = L.map('map', {zoomControl: false}).setView([25.033964, 121.564468], 15);
         L.control.zoom({ position: 'topright' }).addTo(map);
@@ -315,26 +314,24 @@
         setTimeout(() => { map.invalidateSize(); }, 300);
 
         // ==========================================
-        // 【核彈級防穿透】徹底阻斷 FAB 按鈕點擊地圖
+        // 3. 【核彈級防穿透】徹底阻斷 FAB 點擊穿透地圖
         // ==========================================
         const fabContainer = document.getElementById('mapFabsContainer');
         L.DomEvent.disableClickPropagation(fabContainer);
         L.DomEvent.disableScrollPropagation(fabContainer);
         
-        // 攔截所有可能觸發地圖繪製的底層事件
+        // 暴力攔截所有可能觸發地圖畫線的觸控/滑鼠底層事件
         const stopEvents = ['touchstart', 'touchend', 'mousedown', 'mouseup', 'pointerdown', 'pointerup', 'click', 'dblclick'];
         stopEvents.forEach(evt => {
             fabContainer.addEventListener(evt, function(e) {
                 e.stopPropagation();
-            });
+            }, { passive: false });
         });
 
-        // 按鈕專用觸發器，確保觸發動作時不會冒泡
-        function handleFabClick(e, actionFunc) {
-            e.preventDefault();
-            e.stopPropagation();
-            actionFunc();
-        }
+        // 綁定按鈕動作 (使用自訂防冒泡觸發)
+        document.getElementById('btnFabOpt').addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); generateOptimizedRoute(); });
+        document.getElementById('btnFabUndo').addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); undoAction(); });
+        document.getElementById('btnFabClear').addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); clearRouteOnly(); });
 
         // ==========================================
         // 系統變數與圖層
@@ -349,7 +346,7 @@
         document.getElementById('gpxFileInput').addEventListener('change', loadGPXIntoTextarea);
 
         // ==========================================
-        // 復原系統 (Undo)
+        // 4. 復原系統 (Undo)
         // ==========================================
         function saveHistoryState() {
             let currentLatLngs = pathLine.getLatLngs().map(latlng => L.latLng(latlng.lat, latlng.lng));
@@ -369,7 +366,7 @@
         }
 
         // ==========================================
-        // 路徑互動與距離計算
+        // 5. 路徑互動與距離計算 (Km)
         // ==========================================
         function enablePathEditing() {
             pathLine.pm.disable(); 
@@ -378,7 +375,9 @@
         }
 
         map.on('click', function(e) {
+            // 確認沒有點到其他控制元件
             if (e.originalEvent.defaultPrevented) return; 
+            
             saveHistoryState(); 
             let latlngs = pathLine.getLatLngs();
             latlngs.push(e.latlng);
@@ -386,6 +385,7 @@
             enablePathEditing();
         });
 
+        // 監聽 Geoman 的拖曳與刪除事件
         pathLine.on('pm:markerdragstart', saveHistoryState);
         pathLine.on('pm:remove', saveHistoryState);
         pathLine.on('pm:edit', updateDistanceDisplay);
@@ -404,7 +404,7 @@
         }
 
         // ==========================================
-        // 最佳化演算法 (整合基準點 + 手繪點)
+        // 6. 最佳化演算法 (修復當機問題，支援手繪點)
         // ==========================================
         function generateOptimizedRoute() {
             let allPointsToOptimize = [...inputPoints];
@@ -430,7 +430,7 @@
             let bestPath = [];
             let minTotalDist = Infinity;
             
-            // 多起點最近鄰
+            // 步驟一：多起點最近鄰
             for (let startIdx = 0; startIdx < allPointsToOptimize.length; startIdx++) {
                 let unvisited = [...allPointsToOptimize];
                 let current = unvisited.splice(startIdx, 1)[0];
@@ -438,7 +438,7 @@
                 let totalDist = 0;
                 
                 while (unvisited.length > 0) {
-                    let nearestIdx = 0;
+                    let nearestIdx = -1;
                     let minDist = Infinity;
                     for (let i = 0; i < unvisited.length; i++) {
                         let d = map.distance([current.lat, current.lng], [unvisited[i].lat, unvisited[i].lng]);
@@ -451,18 +451,23 @@
                 if (totalDist < minTotalDist) { minTotalDist = totalDist; bestPath = path; }
             }
 
-            // 2-Opt 交換演算法消除重疊
+            // 步驟二：2-Opt 交換演算法消除重疊 (加入安全閥防止瀏覽器當機)
             let improved = true;
-            while (improved) {
+            let iterations = 0;
+            const MAX_ITERATIONS = 50; // 安全閥：最多優化 50 次避免死迴圈
+            
+            while (improved && iterations < MAX_ITERATIONS) {
                 improved = false;
+                iterations++;
                 for (let i = 0; i < bestPath.length - 2; i++) {
                     for (let j = i + 2; j < bestPath.length - 1; j++) {
-                        let d1 = map.distance([bestPath[i].lat, bestPath[i].lng], [bestPath[i+1].lat, bestPath[i+1].lat]) + 
-                                 map.distance([bestPath[j].lat, bestPath[j].lng], [bestPath[j+1].lat, bestPath[j+1].lat]);
+                        let d1 = map.distance([bestPath[i].lat, bestPath[i].lng], [bestPath[i+1].lat, bestPath[i+1].lng]) + 
+                                 map.distance([bestPath[j].lat, bestPath[j].lng], [bestPath[j+1].lat, bestPath[j+1].lng]);
                         let d2 = map.distance([bestPath[i].lat, bestPath[i].lng], [bestPath[j].lat, bestPath[j].lng]) + 
                                  map.distance([bestPath[i+1].lat, bestPath[i+1].lng], [bestPath[j+1].lat, bestPath[j+1].lng]);
                         
-                        if (d2 < d1) {
+                        // 【關鍵修復】：加上微小浮點數誤差 (0.001)，避免因為精確度問題陷入無限互換當機
+                        if (d2 < d1 - 0.001) {
                             bestPath = bestPath.slice(0, i + 1).concat(bestPath.slice(i + 1, j + 1).reverse()).concat(bestPath.slice(j + 1));
                             improved = true;
                         }
@@ -477,7 +482,7 @@
             if(window.innerWidth <= 768 && sidebar.classList.contains('open')) toggleSidebar();
         }
 
-        // 取消/清除路線
+        // 取消最佳化/清除路線
         function clearRouteOnly() {
             if (pathLine.getLatLngs().length === 0) return;
             saveHistoryState();
@@ -487,7 +492,7 @@
         }
 
         // ==========================================
-        // 基準點輸入邏輯
+        // 7. 基準點輸入邏輯 (只展示 50m 圓)
         // ==========================================
         function processInputCoords() {
             const text = document.getElementById('coordsInput').value;
@@ -529,7 +534,7 @@
         }
 
         // ==========================================
-        // GPX 讀取
+        // 8. GPX 讀取與匯出
         // ==========================================
         function loadGPXIntoTextarea(e) {
             const file = e.target.files[0];
@@ -557,9 +562,6 @@
             e.target.value = ''; 
         }
 
-        // ==========================================
-        // 匯出 GPX
-        // ==========================================
         function exportGPX() {
             let pathLatLngs = pathLine.getLatLngs();
             if (inputPoints.length === 0 && pathLatLngs.length === 0) {
@@ -583,7 +585,7 @@
         }
 
         // ==========================================
-        // S2 Cell 網格
+        // 9. S2 Cell 網格
         // ==========================================
         function toggleS2Grid() {
             showS2 = !showS2;
