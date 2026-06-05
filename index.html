@@ -2,8 +2,8 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>皮克敏路徑規劃與 S2 網格工具</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>皮克敏路線規劃與 S2 網格工具 v11 (手機優化版)</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@latest/dist/leaflet-geoman.css" />
@@ -17,123 +17,105 @@
             font-family: "Microsoft JhengHei", "PingFang TC", Arial, sans-serif;
             background-color: #f4f6f8;
             overflow: hidden; 
-            display: flex;
-            flex-direction: column;
+            display: flex; flex-direction: column;
         }
 
         /* 頂部導覽列 */
         header {
-            background-color: #2e7d32;
-            color: white;
-            padding: 10px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            z-index: 1001;
+            background-color: #2e7d32; color: white;
+            padding: 10px 15px; display: flex;
+            justify-content: space-between; align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 1001;
         }
-        header h1 {
-            margin: 0;
-            font-size: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+        .header-left { display: flex; align-items: center; gap: 10px; }
+        header h1 { margin: 0; font-size: 18px; white-space: nowrap; }
+        
+        .btn-icon {
+            background: none; border: none; color: white;
+            font-size: 24px; cursor: pointer; padding: 0 5px;
         }
         .btn-help {
-            background-color: #ffffff;
-            color: #2e7d32;
-            border: none;
-            padding: 6px 15px;
-            border-radius: 20px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.2s;
+            background-color: #ffffff; color: #2e7d32; border: none;
+            padding: 6px 12px; border-radius: 20px; font-weight: bold;
+            font-size: 13px; cursor: pointer; transition: all 0.2s;
         }
-        .btn-help:hover { background-color: #e8f5e9; }
 
-        /* 主體佈局 (側邊欄 + 地圖) */
+        /* 主體佈局 */
         .main-container {
-            display: flex;
-            flex: 1;
-            height: calc(100vh - 50px);
+            display: flex; flex: 1; height: calc(100vh - 50px); position: relative;
         }
 
-        /* 側邊控制欄 */
+        /* 側邊控制欄 (支援 RWD 與滑動隱藏) */
         #sidebar {
-            width: 380px;
-            min-width: 380px;
-            height: 100%;
-            background-color: #ffffff;
-            box-shadow: 3px 0 10px rgba(0,0,0,0.05);
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
-            overflow-y: auto; 
-            padding: 15px 20px;
+            width: 350px; min-width: 350px; height: 100%;
+            background-color: #ffffff; box-shadow: 3px 0 10px rgba(0,0,0,0.1);
+            z-index: 1000; display: flex; flex-direction: column;
+            overflow-y: auto; padding: 15px 20px;
+            transition: transform 0.3s ease;
+            position: absolute; left: 0; top: 0; bottom: 0;
+            transform: translateX(0); /* 預設開啟 */
         }
         
-        /* 地圖區塊 */
-        #map {
-            flex-grow: 1;
-            height: 100%;
-            position: relative;
+        /* 側邊欄遮罩 (手機版開啟側邊欄時使用) */
+        #sidebarOverlay {
+            display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5); z-index: 999;
         }
+
+        /* 手機版與平板響應式設計 */
+        @media (max-width: 768px) {
+            #sidebar {
+                width: 85%; min-width: 280px; max-width: 380px;
+                transform: translateX(-100%); /* 手機預設隱藏側邊欄 */
+            }
+            #sidebar.open { transform: translateX(0); }
+            .header-left h1 { font-size: 16px; }
+        }
+
+        /* 手動收合狀態 (供電腦版使用) */
+        #sidebar.collapsed { transform: translateX(-100%); }
+
+        /* 地圖區塊 */
+        #map { flex-grow: 1; height: 100%; position: relative; width: 100%; }
 
         /* 側邊欄內部元素設計 */
         .section-title {
-            font-size: 14px;
-            font-weight: bold;
-            margin-top: 15px;
-            margin-bottom: 8px;
-            color: #1b5e20;
-            background-color: #e8f5e9;
-            padding: 8px 10px;
-            border-left: 4px solid #4caf50;
-            border-radius: 0 4px 4px 0;
+            font-size: 14px; font-weight: bold; margin-top: 15px; margin-bottom: 8px;
+            color: #1b5e20; background-color: #e8f5e9; padding: 8px 10px;
+            border-left: 4px solid #4caf50; border-radius: 0 4px 4px 0;
         }
         .form-group { margin-bottom: 12px; }
-        label {
-            display: block; font-size: 13px; font-weight: bold;
-            margin-bottom: 5px; color: #333;
-        }
         input[type="text"] {
-            width: 100%; padding: 8px;
-            border: 1px solid #ccc; border-radius: 4px; font-size: 13px;
+            width: 100%; padding: 10px; border: 1px solid #ccc;
+            border-radius: 4px; font-size: 14px;
         }
         textarea {
-            width: 100%; min-height: 100px; padding: 8px;
-            border: 1px solid #ccc; border-radius: 4px; font-size: 13px;
-            resize: vertical; /* 允許垂直拖曳改變大小 */
-            font-family: monospace; white-space: pre-wrap;
+            width: 100%; min-height: 100px; padding: 10px;
+            border: 1px solid #ccc; border-radius: 4px; font-size: 14px;
+            resize: vertical; font-family: monospace; white-space: pre-wrap;
         }
-        .help-text {
-            font-size: 12px; color: #666; margin-bottom: 10px; line-height: 1.5;
-        }
+        .help-text { font-size: 12px; color: #666; margin-bottom: 10px; line-height: 1.5; }
 
-        /* 檔案上傳按鈕偽裝 */
         .file-input-wrapper { position: relative; margin-bottom: 10px; }
         .btn-file-import {
-            background-color: #78909c; color: white; padding: 8px 12px;
-            border-radius: 4px; cursor: pointer; display: inline-block;
-            width: 100%; text-align: center; font-size: 13px; font-weight: bold;
+            background-color: #78909c; color: white; padding: 10px;
+            border-radius: 4px; cursor: pointer; display: block;
+            width: 100%; text-align: center; font-size: 14px; font-weight: bold;
         }
-        .btn-file-import:hover { background-color: #607d8b; }
         #gpxFileInput {
             position: absolute; left: 0; top: 0; opacity: 0;
             width: 100%; height: 100%; cursor: pointer;
         }
 
-        /* 各式按鈕設計 */
         button {
-            padding: 8px 12px; margin-bottom: 8px;
-            color: white; border: none; border-radius: 4px;
-            cursor: pointer; width: 100%; font-size: 13px; font-weight: bold;
-            transition: opacity 0.2s;
+            padding: 10px; margin-bottom: 8px; color: white; border: none;
+            border-radius: 4px; cursor: pointer; width: 100%; font-size: 14px;
+            font-weight: bold; transition: opacity 0.2s;
         }
         button:hover { opacity: 0.85; }
         
         .btn-draw { background-color: #4caf50; }
-        .btn-optimize { background-color: #9c27b0; font-size: 14px; padding: 10px;}
+        .btn-optimize { background-color: #9c27b0; }
         .btn-undo { background-color: #607d8b; }
         .btn-cancel-route { background-color: #e53935; }
         .btn-export { background-color: #0288d1; }
@@ -141,35 +123,50 @@
         .btn-toggle { background-color: #ff9800; color: #fff;}
         .btn-toggle.active { background-color: #37474f; }
 
-        /* 距離顯示區塊 */
         .distance-display {
-            background-color: #fff3e0; color: #e65100;
-            font-size: 16px; font-weight: bold;
-            padding: 12px; border-radius: 4px; text-align: center;
-            border: 2px dashed #ffb74d; margin: 10px 0;
+            background-color: #fff3e0; color: #e65100; font-size: 16px;
+            font-weight: bold; padding: 12px; border-radius: 4px;
+            text-align: center; border: 2px dashed #ffb74d; margin: 10px 0;
         }
 
-        /* 彈出視窗 (Modal) 設計 */
+        /* ★★★ 地圖上的懸浮按鈕 (FABs) ★★★ */
+        .map-fabs {
+            position: absolute; bottom: 25px; right: 15px; z-index: 998;
+            display: flex; flex-direction: column; gap: 12px;
+        }
+        .fab {
+            background-color: #ffffff; border: 2px solid #ccc; color: #333;
+            width: 50px; height: 50px; border-radius: 50%; font-size: 22px;
+            display: flex; justify-content: center; align-items: center;
+            cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            transition: transform 0.1s, background 0.2s; padding: 0;
+        }
+        .fab:active { transform: scale(0.9); }
+        .fab.fab-opt { border-color: #9c27b0; color: #9c27b0; }
+        .fab.fab-undo { border-color: #607d8b; color: #607d8b; }
+        .fab.fab-clear { border-color: #e53935; color: #e53935; }
+
+        /* 彈出視窗 */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(0, 0, 0, 0.6); z-index: 2000;
             display: none; justify-content: center; align-items: center;
         }
         .modal-content {
-            background: #fff; width: 90%; max-width: 600px;
-            border-radius: 8px; padding: 25px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            background: #fff; width: 90%; max-width: 600px; border-radius: 8px;
+            padding: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
             max-height: 90vh; overflow-y: auto;
         }
         .modal-header {
             display: flex; justify-content: space-between; align-items: center;
             border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px;
         }
-        .modal-header h2 { margin: 0; color: #2e7d32; font-size: 20px;}
+        .modal-header h2 { margin: 0; color: #2e7d32; font-size: 18px;}
         .close-modal {
-            background: none; border: none; font-size: 24px; color: #999;
-            cursor: pointer; width: auto; padding: 0;
+            background: none; border: none; font-size: 28px; color: #999;
+            cursor: pointer; width: auto; padding: 0; margin-bottom: 0;
         }
-        .close-modal:hover { color: #333; opacity: 1; }
+        .tutorial-list { padding-left: 20px; font-size: 14px; }
         .tutorial-list li { margin-bottom: 10px; line-height: 1.6; color: #444; }
         .highlight { color: #d32f2f; font-weight: bold; }
     </style>
@@ -177,74 +174,82 @@
 <body>
 
     <header>
-        <h1>🌱 皮克敏路線規劃與 S2 網格工具</h1>
-        <button class="btn-help" onclick="openModal()">📖 使用說明</button>
+        <div class="header-left">
+            <button class="btn-icon" onclick="toggleSidebar()">☰</button>
+            <h1>🌱 皮克敏路線規劃工具</h1>
+        </div>
+        <button class="btn-help" onclick="openModal()">📖 說明</button>
     </header>
 
     <div class="main-container">
+        <div id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
         <div id="sidebar">
-            <div class="section-title">📂 1. 檔案讀取與匯出設定</div>
+            <div class="section-title">📂 1. 檔案與匯出名稱</div>
             <div class="form-group">
                 <input type="text" id="fileNameInput" value="pikmin_route" placeholder="請輸入匯出 GPX 檔案名稱">
             </div>
             <div class="file-input-wrapper">
-                <span class="btn-file-import">📥 讀取 GPX 並提取座標至下方欄位</span>
+                <span class="btn-file-import">📥 讀取 GPX 提取座標</span>
                 <input type="file" id="gpxFileInput" accept=".gpx">
             </div>
 
-            <div class="section-title">📍 2. 種花基準點 (50m 圓形展示)</div>
+            <div class="section-title">📍 2. 種花基準點 (50m 圓形)</div>
             <div class="help-text">
-                * 輸入「緯度, 經度」，每行一組。<br>
-                * <b>此步驟僅在地圖標示出 50m 種花範圍，不會自動連成路徑。</b><br>
-                * 欄位右下角可按住往下拖拉放大。
+                * 格式「緯度, 經度」。可拉右下角放大欄位。<br>
+                * 僅標示 50m 範圍，不會自動連線。
             </div>
             <textarea id="coordsInput" placeholder="25.033964, 121.564468&#10;25.034500, 121.565000"></textarea>
             <button class="btn-draw" onclick="processInputCoords()">➕ 繪製基準點與 50m 範圍</button>
             
             <div class="section-title">👣 3. 路線規劃與最佳化</div>
             <div class="help-text">
-                <b>• 直接畫線：</b>直接在地圖空白處點擊即可畫線。<br>
-                <b>• 自動計算：</b>按下最佳化，系統將尋找不重疊且最短的通過路線。
+                * 地圖空白處點擊可直接畫線。<br>
+                * 可利用地圖右下角的快捷按鈕快速操作。
             </div>
-            <button class="btn-optimize" onclick="generateOptimizedRoute()">✨ 自動產生最佳化路徑</button>
-            
+            <button class="btn-optimize" onclick="generateOptimizedRoute()">✨ 產生最佳化路徑 (無重疊)</button>
             <div style="display: flex; gap: 8px;">
                 <button class="btn-undo" onclick="undoAction()" style="flex: 1;">⏪ 復原動作</button>
-                <button class="btn-cancel-route" onclick="clearRouteOnly()" style="flex: 1;">❌ 清除路線</button>
+                <button class="btn-cancel-route" onclick="clearRouteOnly()" style="flex: 1;">❌ 取消路線</button>
             </div>
             
             <div class="distance-display" id="distanceDisplay">📏 路線總距離: 0.00 km</div>
             
             <div class="section-title">🛠️ 4. 地圖工具</div>
             <button id="s2ToggleBtn" class="btn-toggle" onclick="toggleS2Grid()">🌐 網格：S2 Cell (L16) [關閉中]</button>
-            <button class="btn-export" onclick="exportGPX()">📤 下載路線檔案 (GPX / WPT)</button>
+            <button class="btn-export" onclick="exportGPX()">📤 下載路線檔案 (GPX)</button>
             <button class="btn-clear-all" onclick="clearMapWithConfirm()">🗑️ 清除地圖所有資料</button>
         </div>
 
-        <div id="map"></div>
+        <div id="map">
+            <div class="map-fabs">
+                <button class="fab fab-opt" onclick="generateOptimizedRoute()" title="最佳化路徑">✨</button>
+                <button class="fab fab-undo" onclick="undoAction()" title="復原上一步">⏪</button>
+                <button class="fab fab-clear" onclick="clearRouteOnly()" title="清除路線">❌</button>
+            </div>
+        </div>
     </div>
 
     <div class="modal-overlay" id="helpModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>📖 皮克敏路線規劃工具 - 使用說明</h2>
+                <h2>📖 使用說明</h2>
                 <button class="close-modal" onclick="closeModal()">×</button>
             </div>
             <ul class="tutorial-list">
-                <li><b>🎯 繪製種花範圍：</b>在左側欄位 2 貼上您的座標，點擊按鈕後，地圖上會出現半徑 50 公尺的綠色圓圈，方便您評估種花重疊率。</li>
-                <li><b>👣 手動繪製路線：</b>直接在右側地圖上「點擊滑鼠左鍵」，即可一步步連出您的行走路徑。</li>
-                <li><b>✨ 自動最佳化：</b>如果您輸入了多個基準點，點擊「自動產生最佳化路徑」，系統會使用演算法幫您串出一條<span class="highlight">不繞路、不交叉、總距離最短</span>的順暢路線。</li>
-                <li><b>✍️ 微調路線：</b>
+                <li><b>📱 選單開關：</b>點擊左上角「☰」可收合/展開側邊選單。</li>
+                <li><b>🎯 種花範圍：</b>在欄位 2 貼上座標，即可繪製半徑 50m 圓圈。</li>
+                <li><b>✨ 最佳化路線：</b>點擊地圖右下角「✨」或選單按鈕，系統會自動幫您用最短時間串起所有點位(不重疊)。</li>
+                <li><b>✍️ 編輯路線：</b>
                     <ul>
-                        <li><b>移動點位：</b>直接按住路線上的「實心紅點」進行拖曳。</li>
-                        <li><b>增加折點：</b>按住路線中段的「半透明方塊」往旁邊拉，即可新增折點，讓路線貼合真實街道。</li>
-                        <li><b>刪除點位：</b>對著不要的節點<span class="highlight">「點擊滑鼠右鍵」</span>即可瞬間刪除！</li>
+                        <li>直接點擊地圖可畫線。</li>
+                        <li>拖曳實心紅點可移動，拖曳半透明方塊可新增折點。</li>
+                        <li><b>電腦版：</b>右鍵點擊節點可刪除。</li>
+                        <li><b>手機版：</b>畫錯建議直接使用「⏪ 復原」按鈕。</li>
                     </ul>
                 </li>
-                <li><b>⏪ 復原功能：</b>不管是畫錯、刪錯、或是取消最佳化，都可以點擊「復原動作」回到上一步。</li>
-                <li><b>📥 匯入與匯出：</b>支援 GPX 檔案雙向溝通。您可以讀取先前的 GPX 提取座標，規劃完成後再打包下載。</li>
             </ul>
-            <button class="btn-draw" style="margin-top: 15px; font-size: 15px;" onclick="closeModal()">我瞭解了，開始使用！</button>
+            <button class="btn-draw" onclick="closeModal()">我瞭解了，開始使用！</button>
         </div>
     </div>
 
@@ -254,29 +259,48 @@
 
     <script>
         // ==========================================
-        // UI 彈出視窗邏輯
+        // UI 與選單控制邏輯
         // ==========================================
         function openModal() { document.getElementById('helpModal').style.display = 'flex'; }
         function closeModal() { document.getElementById('helpModal').style.display = 'none'; }
         
-        // 首次進入自動打開說明 (可依需求決定是否保留)
-        window.onload = function() { openModal(); };
+        // 側邊選單收合邏輯 (相容手機與電腦)
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        
+        // 判斷是否為手機版
+        const isMobile = window.innerWidth <= 768;
+        
+        function toggleSidebar() {
+            if (isMobile) {
+                sidebar.classList.toggle('open');
+                overlay.style.display = sidebar.classList.contains('open') ? 'block' : 'none';
+            } else {
+                sidebar.classList.toggle('collapsed');
+            }
+            // 等待動畫結束後重新校正地圖大小
+            setTimeout(() => { map.invalidateSize(); }, 350);
+        }
+
+        window.onload = function() { 
+            // 如果是手機，預設就是隱藏的，不用特別做；電腦則預設展開
+            openModal(); 
+        };
 
         // ==========================================
         // 地圖初始化
         // ==========================================
-        const map = L.map('map').setView([25.033964, 121.564468], 15);
+        const map = L.map('map', {zoomControl: false}).setView([25.033964, 121.564468], 15);
+        L.control.zoom({ position: 'topright' }).addTo(map); // 將縮放按鈕移至右上方避免擋住 FABs
+
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19, attribution: '© OpenStreetMap'
         }).addTo(map);
 
         setTimeout(() => { map.invalidateSize(); }, 300);
 
-        // 系統狀態變數
         let inputPoints = []; 
         let historyStack = []; 
-        
-        // 圖層
         let inputLayerGroup = L.layerGroup().addTo(map); 
         let s2Layer = L.layerGroup().addTo(map);         
         let pathLine = L.polyline([], {color: '#FF3333', weight: 4, opacity: 0.8}).addTo(map); 
@@ -290,7 +314,7 @@
         function saveHistoryState() {
             let currentLatLngs = pathLine.getLatLngs().map(latlng => L.latLng(latlng.lat, latlng.lng));
             historyStack.push(currentLatLngs);
-            if (historyStack.length > 50) historyStack.shift(); // 最多記 50 步
+            if (historyStack.length > 50) historyStack.shift();
         }
 
         function undoAction() {
@@ -309,14 +333,10 @@
         // ==========================================
         function enablePathEditing() {
             pathLine.pm.disable(); 
-            pathLine.pm.enable({
-                allowEditing: true,
-                preventMarkerRemoval: false // 允許右鍵移除點位
-            });
+            pathLine.pm.enable({ allowEditing: true, preventMarkerRemoval: false });
             updateDistanceDisplay(); 
         }
 
-        // 點擊地圖畫線
         map.on('click', function(e) {
             if (e.originalEvent.defaultPrevented) return; 
             saveHistoryState(); 
@@ -326,7 +346,6 @@
             enablePathEditing();
         });
 
-        // 綁定編輯事件以儲存歷史紀錄 & 更新距離
         pathLine.on('pm:markerdragstart', saveHistoryState);
         pathLine.on('pm:remove', saveHistoryState);
         pathLine.on('pm:edit', updateDistanceDisplay);
@@ -345,20 +364,18 @@
         }
 
         // ==========================================
-        // 雙重最佳化演算法 (Nearest Neighbor + 2-Opt)
+        // 最佳化演算法
         // ==========================================
         function generateOptimizedRoute() {
             if (inputPoints.length < 2) {
                 alert("請至少輸入並繪製 2 個基準點，才能產生最佳化路線。");
                 return;
             }
-
             saveHistoryState(); 
 
             let bestPath = [];
             let minTotalDist = Infinity;
             
-            // 多起點最近鄰 (找出最短不閉合路線)
             for (let startIdx = 0; startIdx < inputPoints.length; startIdx++) {
                 let unvisited = [...inputPoints];
                 let current = unvisited.splice(startIdx, 1)[0];
@@ -370,10 +387,7 @@
                     let minDist = Infinity;
                     for (let i = 0; i < unvisited.length; i++) {
                         let d = map.distance([current.lat, current.lng], [unvisited[i].lat, unvisited[i].lng]);
-                        if (d < minDist) {
-                            minDist = d;
-                            nearestIdx = i;
-                        }
+                        if (d < minDist) { minDist = d; nearestIdx = i; }
                     }
                     totalDist += minDist;
                     current = unvisited.splice(nearestIdx, 1)[0];
@@ -381,12 +395,10 @@
                 }
                 
                 if (totalDist < minTotalDist) {
-                    minTotalDist = totalDist;
-                    bestPath = path;
+                    minTotalDist = totalDist; bestPath = path;
                 }
             }
 
-            // 2-Opt 交換 (解開重疊交叉)
             let improved = true;
             while (improved) {
                 improved = false;
@@ -394,27 +406,24 @@
                     for (let j = i + 2; j < bestPath.length - 1; j++) {
                         let d1 = map.distance([bestPath[i].lat, bestPath[i].lng], [bestPath[i+1].lat, bestPath[i+1].lng]) + 
                                  map.distance([bestPath[j].lat, bestPath[j].lng], [bestPath[j+1].lat, bestPath[j+1].lng]);
-                        
                         let d2 = map.distance([bestPath[i].lat, bestPath[i].lng], [bestPath[j].lat, bestPath[j].lng]) + 
                                  map.distance([bestPath[i+1].lat, bestPath[i+1].lng], [bestPath[j+1].lat, bestPath[j+1].lng]);
                         
                         if (d2 < d1) {
-                            let newPath = bestPath.slice(0, i + 1)
-                                .concat(bestPath.slice(i + 1, j + 1).reverse())
-                                .concat(bestPath.slice(j + 1));
-                            bestPath = newPath;
+                            bestPath = bestPath.slice(0, i + 1).concat(bestPath.slice(i + 1, j + 1).reverse()).concat(bestPath.slice(j + 1));
                             improved = true;
                         }
                     }
                 }
             }
-
-            const latlngs = bestPath.map(p => [p.lat, p.lng]);
-            pathLine.setLatLngs(latlngs);
+            pathLine.setLatLngs(bestPath.map(p => [p.lat, p.lng]));
             enablePathEditing();
+            
+            // 在手機版上產生完自動收合側邊欄以便看結果
+            if(isMobile && sidebar.classList.contains('open')) toggleSidebar();
         }
 
-        // 取消最佳化路線 (保留 50m 基準點)
+        // 取消最佳化路線
         function clearRouteOnly() {
             if (pathLine.getLatLngs().length === 0) return;
             saveHistoryState();
@@ -424,7 +433,7 @@
         }
 
         // ==========================================
-        // 基準點輸入邏輯 (只展示點與50m圓)
+        // 基準點輸入邏輯
         // ==========================================
         function processInputCoords() {
             const text = document.getElementById('coordsInput').value;
@@ -458,14 +467,15 @@
             });
 
             if (addedCount > 0) {
-                map.fitBounds(bounds, { padding: [50, 50] }); // 自動縮放至所有點位
+                map.fitBounds(bounds, { padding: [50, 50] }); 
+                if(isMobile && sidebar.classList.contains('open')) toggleSidebar();
             } else {
                 alert("無法解析座標，請確認格式是否正確。");
             }
         }
 
         // ==========================================
-        // GPX 檔案讀取 (填入欄位)
+        // GPX 讀取
         // ==========================================
         function loadGPXIntoTextarea(e) {
             const file = e.target.files[0];
@@ -494,7 +504,7 @@
         }
 
         // ==========================================
-        // 匯出 GPX (WPT格式)
+        // 匯出 GPX
         // ==========================================
         function exportGPX() {
             let pathLatLngs = pathLine.getLatLngs();
@@ -505,7 +515,6 @@
             let fileName = document.getElementById('fileNameInput').value.trim() || "pikmin_route";
             let gpxContent = '<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="PikminPlanner">\n';
             
-            // 將畫出來的路線轉為 wpt 匯出
             pathLatLngs.forEach((latlng, index) => {
                 gpxContent += `  <wpt lat="${latlng.lat}" lon="${latlng.lng}">\n    <name>Node ${index + 1}</name>\n  </wpt>\n`;
             });
@@ -520,7 +529,7 @@
         }
 
         // ==========================================
-        // S2 Cell 網格切換 (Level 16)
+        // S2 Cell 網格
         // ==========================================
         function toggleS2Grid() {
             showS2 = !showS2;
@@ -560,9 +569,6 @@
             }
         }
 
-        // ==========================================
-        // 清除所有資料
-        // ==========================================
         function clearMapWithConfirm() {
             if(!confirm("確定要清除地圖上的「所有基準點與路線」嗎？")) return;
             saveHistoryState(); 
