@@ -11,9 +11,12 @@
     <style>
         /* 全域重置 */
         * { box-sizing: border-box; }
+        
+        /* 使用 100dvh 解決手機瀏覽器網址列遮擋問題 */
         html, body {
             margin: 0; padding: 0;
-            height: 100vh; width: 100vw;
+            width: 100vw; height: 100vh;
+            height: 100dvh; 
             font-family: "Microsoft JhengHei", "PingFang TC", Arial, sans-serif;
             background-color: #f4f6f8;
             overflow: hidden; 
@@ -43,7 +46,7 @@
 
         /* 主體佈局 */
         .main-container {
-            display: flex; flex: 1; position: relative; height: calc(100vh - 55px);
+            display: flex; flex: 1; position: relative; height: calc(100dvh - 55px);
         }
 
         /* 側邊控制欄 */
@@ -52,8 +55,8 @@
             background-color: #ffffff; box-shadow: 3px 0 10px rgba(0,0,0,0.1);
             z-index: 1500; display: flex; flex-direction: column;
             overflow-y: auto; overflow-x: hidden;
-            /* 底部保留 120px 確保手機按鈕不被遮擋 */
-            padding: 15px 20px 120px 20px; 
+            /* 底部保留 150px 確保手機按鈕不被遮擋 */
+            padding: 15px 20px 150px 20px; 
             -webkit-overflow-scrolling: touch;
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: absolute; left: 0; top: 0; bottom: 0;
@@ -122,7 +125,7 @@
             text-align: center; border: 2px dashed #ffb74d; margin: 10px 0;
         }
 
-        /* ★★★ 地圖懸浮快捷鍵 (FABs) ★★★ */
+        /* ★★★ 地圖懸浮快捷鍵 (FABs) 電腦版 ★★★ */
         .map-fabs {
             position: absolute; bottom: 30px; right: 15px; z-index: 1000;
             display: flex; flex-direction: column; gap: 15px;
@@ -147,10 +150,13 @@
             }
             #sidebar.open { transform: translateX(0); }
             
-            /* 手機版：將 FABs 改為底部置中、水平排列 */
+            /* 手機版 FAB：底部絕對置中、水平排列、不會消失 */
             .map-fabs {
-                bottom: 25px; right: 50%; transform: translateX(50%);
+                bottom: 25px; 
+                left: 50%; right: auto; 
+                transform: translateX(-50%);
                 flex-direction: row; gap: 20px;
+                width: max-content;
             }
             .fab { width: 50px; height: 50px; font-size: 20px; }
             
@@ -190,14 +196,14 @@
 
     <header>
         <div class="header-left">
-            <button class="btn-icon" onclick="toggleSidebar()">☰</button>
+            <button class="btn-icon" onclick="toggleSidebar(true)">☰</button>
             <h1>🌱 皮克敏路線工具</h1>
         </div>
         <button class="btn-help" onclick="openModal()">📖 說明</button>
     </header>
 
     <div class="main-container">
-        <div id="sidebarOverlay" onclick="toggleSidebar()"></div>
+        <div id="sidebarOverlay" onclick="toggleSidebar(false)"></div>
 
         <div id="sidebar">
             <div class="section-title">📂 1. 檔案與匯出名稱</div>
@@ -220,7 +226,7 @@
             <div class="section-title">👣 3. 路線規劃與最佳化</div>
             <div class="help-text">
                 * 點擊地圖畫線，實心點可拖曳調整。<br>
-                * 最佳化會自動幫您用最短距離串起所有點。
+                * 最佳化會幫您用最短距離串起所有點。
             </div>
             <button class="btn-optimize" onclick="generateOptimizedRoute()">✨ 產生最佳化路徑 (含手繪點)</button>
             <div style="display: flex; gap: 8px;">
@@ -268,7 +274,7 @@
 
     <script>
         // ==========================================
-        // 1. UI 與選單控制邏輯 (修復開關不靈敏)
+        // 1. UI 與選單控制邏輯
         // ==========================================
         function openModal() { document.getElementById('helpModal').style.display = 'flex'; }
         function closeModal() { document.getElementById('helpModal').style.display = 'none'; }
@@ -276,19 +282,23 @@
         const sidebar = document.getElementById('sidebar');
         const overlay = document.getElementById('sidebarOverlay');
         
-        function toggleSidebar() {
+        function toggleSidebar(forceOpen) {
             const isMobile = window.innerWidth <= 768;
             if (isMobile) {
-                sidebar.classList.toggle('open');
+                if (forceOpen === true) {
+                    sidebar.classList.add('open');
+                } else if (forceOpen === false) {
+                    sidebar.classList.remove('open');
+                } else {
+                    sidebar.classList.toggle('open');
+                }
                 overlay.style.display = sidebar.classList.contains('open') ? 'block' : 'none';
             } else {
                 sidebar.classList.toggle('collapsed');
             }
-            // 等待 CSS 動畫完成後重新計算地圖尺寸
             setTimeout(() => { map.invalidateSize(); }, 350);
         }
 
-        // 監聽視窗變化，防止切換裝置方向時破版
         window.addEventListener('resize', () => {
             if (window.innerWidth > 768) {
                 overlay.style.display = 'none';
@@ -297,7 +307,6 @@
         });
 
         window.onload = function() { 
-            // 如果是手機版，預設選單會被 CSS 隱藏，不影響地圖
             openModal(); 
         };
 
@@ -321,17 +330,28 @@
         L.DomEvent.disableScrollPropagation(fabContainer);
         
         // 暴力攔截所有可能觸發地圖畫線的觸控/滑鼠底層事件
-        const stopEvents = ['touchstart', 'touchend', 'mousedown', 'mouseup', 'pointerdown', 'pointerup', 'click', 'dblclick'];
+        const stopEvents = ['touchstart', 'touchmove', 'touchend', 'mousedown', 'mousemove', 'mouseup', 'click', 'dblclick', 'pointerdown', 'pointerup'];
         stopEvents.forEach(evt => {
             fabContainer.addEventListener(evt, function(e) {
                 e.stopPropagation();
             }, { passive: false });
         });
 
-        // 綁定按鈕動作 (使用自訂防冒泡觸發)
-        document.getElementById('btnFabOpt').addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); generateOptimizedRoute(); });
-        document.getElementById('btnFabUndo').addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); undoAction(); });
-        document.getElementById('btnFabClear').addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); clearRouteOnly(); });
+        // 綁定按鈕動作 (防冒泡觸發)
+        function bindFabAction(btnId, actionFunc) {
+            const btn = document.getElementById(btnId);
+            const handler = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                actionFunc();
+            };
+            btn.addEventListener('click', handler);
+            btn.addEventListener('touchend', handler);
+        }
+
+        bindFabAction('btnFabOpt', generateOptimizedRoute);
+        bindFabAction('btnFabUndo', undoAction);
+        bindFabAction('btnFabClear', clearRouteOnly);
 
         // ==========================================
         // 系統變數與圖層
@@ -404,7 +424,7 @@
         }
 
         // ==========================================
-        // 6. 最佳化演算法 (修復當機問題，支援手繪點)
+        // 6. 最佳化演算法 (徹底修復當機防死迴圈)
         // ==========================================
         function generateOptimizedRoute() {
             let allPointsToOptimize = [...inputPoints];
@@ -479,7 +499,7 @@
             enablePathEditing();
             
             // 手機版自動收合側邊欄以便看結果
-            if(window.innerWidth <= 768 && sidebar.classList.contains('open')) toggleSidebar();
+            if(window.innerWidth <= 768) toggleSidebar(false);
         }
 
         // 取消最佳化/清除路線
@@ -527,7 +547,7 @@
 
             if (addedCount > 0) {
                 map.fitBounds(bounds, { padding: [50, 50] }); 
-                if(window.innerWidth <= 768 && sidebar.classList.contains('open')) toggleSidebar();
+                if(window.innerWidth <= 768) toggleSidebar(false);
             } else {
                 alert("無法解析座標，請確認格式是否正確。");
             }
